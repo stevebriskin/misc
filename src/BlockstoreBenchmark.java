@@ -5,9 +5,9 @@ import com.mongodb.*;
 
 public class BlockstoreBenchmark {
 
-    final static int MMAP_PORT=27017;
-    final static int WT_PORT=27018;
-    final static int WT2_PORT=27019;
+    final static int MMAP_PORT=30017;
+    final static int WT_PORT=30018;
+    final static int WT2_PORT=30019;
 
     public static void main(String args[]) throws Exception {
         Mongo mongo = new MongoClient("localhost", MMAP_PORT);
@@ -151,9 +151,9 @@ public class BlockstoreBenchmark {
     }
 
     public static class MmapStyleGroomer implements Runnable {
-        DBCollection source;
-        DBCollection target;
-        double percentToCopy;
+        final DBCollection source;
+        final DBCollection target;
+        final double percentToCopy;
 
         public MmapStyleGroomer(Mongo mongo, String sourceDbName, String targetDbName, double percentToCopy) {
             source = mongo.getDB(sourceDbName).getCollection("blocks");
