@@ -10,7 +10,7 @@ public class BlockstoreBenchmark {
     final static int WT2_PORT=30019;
 
     public static void main(String args[]) throws Exception {
-        Mongo mongo = new MongoClient("localhost", MMAP_PORT);
+        Mongo mongo = new MongoClient("localhost", WT_PORT);
         runTestCurrentBehavior(mongo);
     }
 
@@ -76,11 +76,11 @@ public class BlockstoreBenchmark {
     }
 
 
-    public static long getTotalDBSize(Mongo mongo) {
-        long size = 0;
+    public static double getTotalDBSize(Mongo mongo) {
+        double size = 0;
         for(String dbName : mongo.getDatabaseNames()) {
             CommandResult result = mongo.getDB(dbName).getStats();
-            size += (Long) result.get("fileSize");
+            size += ((Number) result.get("fileSize")).doubleValue();
         }
 
         return size;
@@ -173,7 +173,7 @@ public class BlockstoreBenchmark {
                 }
             }
 
-            source.drop();
+            source.getDB().dropDatabase();
         }
     }
 
