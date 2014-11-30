@@ -7,22 +7,42 @@ import com.mongodb.*;
 
 public class BlockstoreBenchmark {
 
-    final static int MMAP_PORT=30017;
-    final static int WT_PORT=30018;
-    final static int WT2_PORT=30019;
-    final static int WT3_PORT=30020;
+    final static int MMAP_PORT=30017; //current behavior with mmap
+    final static int WT_PORT=30018; //current behavior with WT block
+    final static int WT2_PORT=30019; //current behavior with WT lsm
+    final static int WT3_PORT=30020; //different groom behavior with WT ls
+
+    final static int PORTS[] = { MMAP_PORT, WT_PORT, WT2_PORT, WT3_PORT};
 
     public static void main(String args[]) throws Exception {
-        Mongo mongo = new MongoClient("localhost", WT3_PORT);
-        //runTestCurrentBehavior(mongo);
         System.out.println("Starting: " + new Date());
-        runTestWTNewGroom(mongo);
-        System.out.println("Done: " + new Date());
+
+        for (int port : PORTS) {
+            System.out.println("\n\nRunning test on port: " + port);
+            System.out.println("Starting: " + new Date());
+            Mongo mongo = new MongoClient("localhost", port);
+
+            if (port != WT3_PORT) {
+                runTestCurrentBehavior(mongo);
+            }
+            else {
+                runTestWTNewGroom(mongo);
+            }
+            System.out.println("Done: " + new Date());
+
+            try {
+                mongo.getDB("admin").command("fsync");
+                mongo.getDB("admin").command("shutdown");
+            } catch (Exception e) {}
+
+            Thread.sleep(5000);
+        }
+
 
     }
 
     public static void runTestCurrentBehavior(final Mongo mongo) throws Exception{
-        System.out.println("Running mmap insertion test");
+        System.out.println("Running current insertion test");
 
         final long start = System.currentTimeMillis();
 
@@ -46,6 +66,9 @@ public class BlockstoreBenchmark {
                 final long groomStart = System.currentTimeMillis();
                 Thread groomThread = new Thread(new MmapStyleGroomer(mongo, "db_0", "db_0_B", .45));
                 groomThread.start();
+                try {
+                    groomThread.join();
+                } catch (InterruptedException e) {}
 
                 final long groomEnd = System.currentTimeMillis();
                 System.out.println("Done grooming in seconds: " + (groomEnd - groomStart) / 1000);
@@ -103,6 +126,12 @@ public class BlockstoreBenchmark {
                 final long groomStart = System.currentTimeMillis();
                 Thread groomThread = new Thread(new WTStyleGroomer(mongo, "db_0", .45));
                 groomThread.start();
+                try {
+                    groomThread.join();
+                } catch (InterruptedException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
 
                 final long groomEnd = System.currentTimeMillis();
                 System.out.println("Done grooming in seconds: " + (groomEnd - groomStart) / 1000);
@@ -226,6 +255,7 @@ public class BlockstoreBenchmark {
         }
 
         public void run() {
+            System.out.println("Source collection records: " + source.count());
             DBCursor readCur = source.find().sort(new BasicDBObject("$natural", 1));
             while (readCur.hasNext()) {
                 DBObject obj = readCur.next();
