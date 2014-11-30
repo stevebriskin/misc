@@ -1,5 +1,7 @@
 import java.security.*;
+import java.util.Date;
 import java.util.concurrent.*;
+
 import com.mongodb.*;
 
 
@@ -8,10 +10,15 @@ public class BlockstoreBenchmark {
     final static int MMAP_PORT=30017;
     final static int WT_PORT=30018;
     final static int WT2_PORT=30019;
+    final static int WT3_PORT=30020;
 
     public static void main(String args[]) throws Exception {
-        Mongo mongo = new MongoClient("localhost", WT2_PORT);
-        runTestCurrentBehavior(mongo);
+        Mongo mongo = new MongoClient("localhost", WT3_PORT);
+        //runTestCurrentBehavior(mongo);
+        System.out.println("Starting: " + new Date());
+        runTestWTNewGroom(mongo);
+        System.out.println("Done: " + new Date());
+
     }
 
     public static void runTestCurrentBehavior(final Mongo mongo) throws Exception{
@@ -68,11 +75,60 @@ public class BlockstoreBenchmark {
         groomThread.join();
 
         System.out.println("Total runtime: " + (System.currentTimeMillis() - start) / 1000);
-        System.out.println("DB File size: " + getTotalDBSize(mongo));
+        //System.out.println("DB File size: " + getTotalDBSize(mongo));
     }
 
-    public static void runTestWTNewGroom() {
+    public static void runTestWTNewGroom(final Mongo mongo) throws Exception {
+        System.out.println("Running wt new groom test");
 
+        final long start = System.currentTimeMillis();
+
+        ExecutorService execInsert = Executors.newFixedThreadPool(4);
+        System.out.println("Starting insertion");
+
+        for (int i = 0; i < 4; i++) {
+            execInsert.submit(new BlockInserter(mongo, "db_"+i, 0, 1_000_000));
+        }
+
+        execInsert.shutdown();
+        execInsert.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
+
+        long insertEnd1 = System.currentTimeMillis();
+
+        System.out.println("Done inserting round 1 in seconds:" + (insertEnd1 - start) / 1000);
+
+        Thread groomThread = new Thread() {
+            public void run()
+            {
+                final long groomStart = System.currentTimeMillis();
+                Thread groomThread = new Thread(new WTStyleGroomer(mongo, "db_0", .45));
+                groomThread.start();
+
+                final long groomEnd = System.currentTimeMillis();
+                System.out.println("Done grooming in seconds: " + (groomEnd - groomStart) / 1000);
+            }
+        };
+        groomThread.start();
+
+        long insertStart2 = System.currentTimeMillis();
+        ExecutorService execInsert2 = Executors.newFixedThreadPool(4);
+        System.out.println("Starting insertion");
+
+        for (int i = 0; i < 4; i++) {
+            String dbName = "db_" + String.valueOf(i);
+
+            execInsert2.submit(new BlockInserter(mongo, dbName, 1_000_000, 100_000));
+        }
+        execInsert2.shutdown();
+        execInsert2.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
+
+        long insertEnd2 = System.currentTimeMillis();
+
+        System.out.println("Done inserting round 2 in seconds:" + (insertEnd2 - insertStart2) / 1000);
+
+        groomThread.join();
+
+        System.out.println("Total runtime: " + (System.currentTimeMillis() - start) / 1000);
     }
 
 
@@ -177,7 +233,7 @@ public class BlockstoreBenchmark {
         }
     }
 
-    public class WTStyleGroomer implements Runnable {
+    public static class WTStyleGroomer implements Runnable {
         DBCollection source;
         double percentToCopy;
 
