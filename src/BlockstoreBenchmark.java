@@ -30,7 +30,7 @@ public class BlockstoreBenchmark {
         System.out.println("Starting insertion");
 
         for (int i = 0; i < 4; i++) {
-            execInsert.submit(new BlockInserter(mongo, "db_"+i, 0, 1_000_000));
+            execInsert.submit(new BlockInserter(mongo, "db_"+i, 0, 1_000_000, true));
         }
 
         execInsert.shutdown();
@@ -63,7 +63,7 @@ public class BlockstoreBenchmark {
                 dbName = "db_0_B";
             }
 
-            execInsert2.submit(new BlockInserter(mongo, dbName, 1_000_000, 100_000));
+            execInsert2.submit(new BlockInserter(mongo, dbName, 1_000_000, 100_000, true));
         }
         execInsert2.shutdown();
         execInsert2.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
@@ -87,7 +87,7 @@ public class BlockstoreBenchmark {
         System.out.println("Starting insertion");
 
         for (int i = 0; i < 4; i++) {
-            execInsert.submit(new BlockInserter(mongo, "db_"+i, 0, 1_000_000));
+            execInsert.submit(new BlockInserter(mongo, "db_"+i, 0, 1_000_000, false));
         }
 
         execInsert.shutdown();
@@ -117,7 +117,7 @@ public class BlockstoreBenchmark {
         for (int i = 0; i < 4; i++) {
             String dbName = "db_" + String.valueOf(i);
 
-            execInsert2.submit(new BlockInserter(mongo, dbName, 1_000_000, 100_000));
+            execInsert2.submit(new BlockInserter(mongo, dbName, 1_000_000, 100_000, false));
         }
         execInsert2.shutdown();
         execInsert2.awaitTermination(Integer.MAX_VALUE, TimeUnit.SECONDS);
@@ -177,12 +177,14 @@ public class BlockstoreBenchmark {
         final DBCollection collection;
         final int startId;
         final int numToInsert;
+        final boolean warmIndex;
 
-        public BlockInserter (Mongo mongo, String dbName, int startId, int numToInsert) {
+        public BlockInserter (Mongo mongo, String dbName, int startId, int numToInsert, boolean warmIndex) {
             DB db = mongo.getDB(dbName);
             this.collection = db.getCollection("blocks");
             this.startId = startId;
             this.numToInsert = numToInsert;
+            this.warmIndex = warmIndex;
 
             ensureNoPowerOf2(mongo, dbName, "blocks");
         }
@@ -191,7 +193,10 @@ public class BlockstoreBenchmark {
 
             for(int i = startId; i < startId + numToInsert; i++) {
                 String id = hash256(String.valueOf(i).getBytes());
-                collection.findOne(new BasicDBObject("_id", id), new BasicDBObject("_id", 1));
+
+                if (warmIndex) {
+                    collection.findOne(new BasicDBObject("_id", id), new BasicDBObject("_id", 1));
+                }
 
                 DBObject obj = new BasicDBObject();
                 obj.put("_id", id);
