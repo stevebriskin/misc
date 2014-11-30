@@ -10,7 +10,7 @@ public class BlockstoreBenchmark {
     final static int WT2_PORT=30019;
 
     public static void main(String args[]) throws Exception {
-        Mongo mongo = new MongoClient("localhost", WT_PORT);
+        Mongo mongo = new MongoClient("localhost", WT2_PORT);
         runTestCurrentBehavior(mongo);
     }
 
