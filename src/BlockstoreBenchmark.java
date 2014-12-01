@@ -22,23 +22,24 @@ public class BlockstoreBenchmark {
             System.out.println("Starting: " + new Date());
             Mongo mongo = new MongoClient("localhost", port);
 
-            if (port != WT3_PORT) {
-                runTestCurrentBehavior(mongo);
+            if (port == WT3_PORT) {
+                runTestWTNewGroom(mongo);
             }
             else {
-                runTestWTNewGroom(mongo);
+                runTestCurrentBehavior(mongo);
             }
             System.out.println("Done: " + new Date());
 
-            try {
-                mongo.getDB("admin").command("fsync");
-                mongo.getDB("admin").command("shutdown");
-            } catch (Exception e) {}
+            //leave the last one up for an unrelated test
+            if ( port != WT3_PORT) {
+                try {
+                    mongo.getDB("admin").command("fsync");
+                    mongo.getDB("admin").command("shutdown");
+                } catch (Exception e) {}
+            }
 
             Thread.sleep(5000);
         }
-
-
     }
 
     public static void runTestCurrentBehavior(final Mongo mongo) throws Exception{
