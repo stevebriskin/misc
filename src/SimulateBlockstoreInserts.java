@@ -29,7 +29,7 @@ public class SimulateBlockstoreInserts {
         System.out.println("Running current insertion test");
 
         final int numDBs = 10;
-        final int threadsPerDB = 3;
+        final int threadsPerDB = 5;
 
         final long start = System.currentTimeMillis();
 
@@ -121,7 +121,8 @@ public class SimulateBlockstoreInserts {
             List<DBObject> toInsert = new ArrayList<>();
 
             for(int i = startId; i < startId + numToInsert; i++) {
-                SimulateBlockstoreInserts.rnd.nextBytes(data);
+                //SimulateBlockstoreInserts.rnd.nextBytes(data);
+                Arrays.fill(data, (byte)3);
                 String id = hash256(data);
 
                 if (warmIndex && i % (32 * 1024 * 1024) == 0) {
