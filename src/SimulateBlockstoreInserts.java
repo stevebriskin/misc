@@ -121,8 +121,8 @@ public class SimulateBlockstoreInserts {
             List<DBObject> toInsert = new ArrayList<>();
 
             for(int i = startId; i < startId + numToInsert; i++) {
-                //SimulateBlockstoreInserts.rnd.nextBytes(data);
-                Arrays.fill(data, (byte)3);
+                SimulateBlockstoreInserts.rnd.nextBytes(data);
+                //Arrays.fill(data, (byte)3);
                 String id = hash256(data);
 
                 if (warmIndex && i % (32 * 1024 * 1024) == 0) {
